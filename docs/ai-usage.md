@@ -51,3 +51,16 @@ This project was built with **Claude Code** (an agentic CLI) as a pair programme
   - **Money in minor units would overflow** Prisma's 32-bit `Int` for senior INR salaries (₹21M+ in paise). Switched to whole currency units and updated the docs (ADR-002). This was caught while writing the schema, before any data depended on it.
   - A throwaway verification command hung because of a stray `cat` waiting on stdin. It was stopped and re-run. This was a tooling slip, not a code issue.
 - **Verification:** 15 generator tests (determinism, uniqueness, currency per country, seniority pay ordering, revision chain integrity) were seen failing first, then passing. The seed was run twice to confirm it is re-runnable. Distributions were checked with SQL (headcount per country, pay by title, ~4% terminated).
+
+### Phase 3 — Employee API
+
+- **Prompt (summary):** "Write API specs first for list (pagination, search, filters, sorting), get, create, update, terminate, filter metadata and error handling, using a real temporary SQLite database. Then implement it in layers: routes → service → repository."
+- **Outcome:** 43 new specs, seen failing, then passing. Zod validation, a central error handler with one error shape, a repository as the only Prisma boundary, and DTOs that format calendar dates as `YYYY-MM-DD`.
+- **Decisions I made / adjusted:**
+  - `PATCH` uses a **strict schema** that cannot touch salary, country or status (ADR-006). Otherwise the salary audit trail could be bypassed.
+  - Integration tests apply the migration SQL directly to a temp file instead of running `prisma migrate`. Each file gets a fresh DB in milliseconds, and the suite runs in ~2 s.
+- **Corrected along the way:**
+  - The architecture doc claimed search would use indexes. Measuring showed that a `%term%` search is a full scan (~20 ms at 10k). I corrected the doc and recorded the trade-off and upgrade path (ADR-005, `performance.md`).
+  - A generic `distinct(field)` helper needed an unsafe cast that the type checker rejected. Replaced it with three explicit, fully typed queries.
+  - A heredoc used to write a test file was cut off part-way. It was caught on review and the missing tests were restored before running the suite.
+- **Verification:** 61 server tests pass in ~2.3 s. Endpoints were timed against the 10k seeded DB (all < 50 ms warm), query plans checked with `EXPLAIN QUERY PLAN`, and the data was re-seeded afterwards to remove the manual test hire.

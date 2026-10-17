@@ -106,7 +106,7 @@ FX rates to USD are a static constant in `domain/fx.ts` (for example INR, GBP, E
 ## Key decisions (summary — reasoning in `decisions.md` as they are made)
 
 1. **Offset pagination.** At 10k rows offset is cheap and supports "jump to page N". Keyset pagination is the upgrade path.
-2. **Search with `LIKE`** on indexed columns, debounced on the client. SQLite FTS5 is the upgrade path.
+2. **Substring search with `LIKE %term%`** across name, email and code, debounced on the client. It cannot use an index, but a full scan of 10k rows takes ~20 ms (see `performance.md`). SQLite FTS5 is the upgrade path.
 3. **Aggregations in SQL** (`GROUP BY`). Median is computed per group from sorted values. Insights never load all rows into JS just to sum them.
 4. **Money as whole-unit integers plus currency**, so there are no floating-point errors (see `decisions.md`, ADR-002).
 5. **Append-only revisions** are written transactionally with the salary update.
