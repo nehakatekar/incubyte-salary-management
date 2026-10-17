@@ -64,3 +64,11 @@ This project was built with **Claude Code** (an agentic CLI) as a pair programme
   - A generic `distinct(field)` helper needed an unsafe cast that the type checker rejected. Replaced it with three explicit, fully typed queries.
   - A heredoc used to write a test file was cut off part-way. It was caught on review and the missing tests were restored before running the suite.
 - **Verification:** 61 server tests pass in ~2.3 s. Endpoints were timed against the 10k seeded DB (all < 50 ms warm), query plans checked with `EXPLAIN QUERY PLAN`, and the data was re-seeded afterwards to remove the manual test hire.
+
+### Phase 4 — Salary changes & history
+
+- **Prompt (summary):** "Write the salary-change specs first: service unit tests with a fake repository and a fixed clock, plus API and repository integration tests. Then implement it with a transaction and optimistic concurrency."
+- **Outcome:** `SalaryService` with four business rules, `recordSalaryChange` (a conditional update plus a revision in one transaction), a `BusinessRuleError` returning 422, and an injected `Clock`. 22 new tests, seen failing first.
+- **How I checked the tests were meaningful:** I ran a quick **mutation check**. I disabled each rule in turn (future date, terminated, optimistic check, revision insert) and confirmed at least one test failed every time, then restored the code.
+- **Product gap found by manual testing:** the API accepted an 18× raise (£55,400 → £999,999). I decided not to block it server-side, because legitimate large changes exist, and planned a UI confirmation for changes over ±30% instead (ADR-007).
+- **Verification:** 83 server tests pass in ~2.8 s. Lint, typecheck and format are clean. A manual change against the 10k DB returned 201 in ~55 ms. The data was re-seeded afterwards.

@@ -72,6 +72,28 @@ export class EmployeeRepository {
     );
   }
 
+  /**
+   * Applies a salary change and appends its revision atomically. The update
+   * only matches if the salary is still what the caller read (optimistic
+   * concurrency), so two HR users cannot silently overwrite each other.
+   */
+  async recordSalaryChange(
+    id: number,
+    expected: Pick<Employee, 'salary' | 'salaryEffectiveDate'>,
+    revision: NewRevision,
+  ): Promise<void> {
+    await this.prisma.$transaction(async (tx) => {
+      const { count } = await tx.employee.updateMany({
+        where: { id, ...expected },
+        data: { salary: revision.newSalary, salaryEffectiveDate: revision.effectiveDate },
+      });
+      if (count === 0) {
+        throw new ConflictError('Salary was changed by someone else; reload and try again');
+      }
+      await tx.salaryRevision.create({ data: { ...revision, employeeId: id } });
+    });
+  }
+
   update(id: number, changes: EmployeeChanges): Promise<Employee> {
     return withConstraintErrors(() =>
       this.prisma.employee.update({ where: { id }, data: changes }),

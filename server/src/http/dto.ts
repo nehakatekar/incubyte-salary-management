@@ -1,7 +1,8 @@
 import type { Employee, SalaryRevision } from '@prisma/client';
+import { formatIsoDate } from '../domain/clock.js';
 
 /** Calendar dates go over the wire as YYYY-MM-DD; timestamps stay ISO-8601. */
-const toDate = (value: Date) => value.toISOString().slice(0, 10);
+const toDate = formatIsoDate;
 
 export function toEmployeeDto(employee: Employee) {
   return {

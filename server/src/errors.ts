@@ -1,5 +1,10 @@
 export type ErrorCode =
-  'VALIDATION_ERROR' | 'INVALID_JSON' | 'NOT_FOUND' | 'CONFLICT' | 'INTERNAL_ERROR';
+  | 'VALIDATION_ERROR'
+  | 'INVALID_JSON'
+  | 'NOT_FOUND'
+  | 'CONFLICT'
+  | 'BUSINESS_RULE_VIOLATION'
+  | 'INTERNAL_ERROR';
 
 export interface ErrorDetail {
   path: string;
@@ -28,5 +33,12 @@ export class NotFoundError extends AppError {
 export class ConflictError extends AppError {
   constructor(message: string) {
     super(409, 'CONFLICT', message);
+  }
+}
+
+/** The request is well-formed but breaks a business rule. */
+export class BusinessRuleError extends AppError {
+  constructor(message: string) {
+    super(422, 'BUSINESS_RULE_VIOLATION', message);
   }
 }
