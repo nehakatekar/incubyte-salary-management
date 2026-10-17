@@ -12,12 +12,12 @@ flowchart LR
   Repo --> DB[(SQLite)]
 ```
 
-| Layer | Responsibility | Depends on |
-|---|---|---|
-| Routes | HTTP concerns: parse and validate input (Zod), map to status codes | Services |
-| Services | Business rules: salary change plus revision, analytics, FX conversion | Repository interfaces |
-| Repositories | The only layer that talks to the DB (Prisma) | Prisma client |
-| Domain | Pure functions and types: money, stats (median, percentiles), FX | Nothing |
+| Layer        | Responsibility                                                        | Depends on            |
+| ------------ | --------------------------------------------------------------------- | --------------------- |
+| Routes       | HTTP concerns: parse and validate input (Zod), map to status codes    | Services              |
+| Services     | Business rules: salary change plus revision, analytics, FX conversion | Repository interfaces |
+| Repositories | The only layer that talks to the DB (Prisma)                          | Prisma client         |
+| Domain       | Pure functions and types: money, stats (median, percentiles), FX      | Nothing               |
 
 Services receive repositories (and a clock) through constructor injection. Unit tests can therefore use in-memory fakes, and integration tests can use a throwaway SQLite file.
 
@@ -84,22 +84,22 @@ FX rates to USD are a static constant in `domain/fx.ts` (for example INR, GBP, E
 
 ## API
 
-| Method | Path | Purpose |
-|---|---|---|
-| GET | `/api/health` | Liveness |
-| GET | `/api/employees?page&pageSize&search&country&department&jobTitle&status&sortBy&sortDir` | Paginated list. `pageSize` ≤ 100. Returns `{ data, page, pageSize, total }` |
-| GET | `/api/employees/:id` | Employee with salary revisions |
-| POST | `/api/employees` | Create (creates the initial revision) |
-| PATCH | `/api/employees/:id` | Update non-salary fields |
-| DELETE | `/api/employees/:id` | Soft terminate |
-| POST | `/api/employees/:id/salary` | `{ amountMinor, effectiveDate, reason }`. Records a revision. |
-| GET | `/api/meta/filters` | Distinct countries / departments / job titles for dropdowns |
-| GET | `/api/insights/summary` | Headcount, total annual cost (USD), median (USD) |
-| GET | `/api/insights/by-country` | Per country: headcount, min/max/avg/median (local + USD) |
-| GET | `/api/insights/by-department` | Per department: headcount, total cost (USD), median (USD) |
-| GET | `/api/insights/by-job-title?country=` | Per title: min/max/avg/median |
-| GET | `/api/insights/distribution?country=` | Salary band histogram |
-| GET | `/api/insights/recent-changes?limit=` | Latest revisions |
+| Method | Path                                                                                    | Purpose                                                                     |
+| ------ | --------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| GET    | `/api/health`                                                                           | Liveness                                                                    |
+| GET    | `/api/employees?page&pageSize&search&country&department&jobTitle&status&sortBy&sortDir` | Paginated list. `pageSize` ≤ 100. Returns `{ data, page, pageSize, total }` |
+| GET    | `/api/employees/:id`                                                                    | Employee with salary revisions                                              |
+| POST   | `/api/employees`                                                                        | Create (creates the initial revision)                                       |
+| PATCH  | `/api/employees/:id`                                                                    | Update non-salary fields                                                    |
+| DELETE | `/api/employees/:id`                                                                    | Soft terminate                                                              |
+| POST   | `/api/employees/:id/salary`                                                             | `{ amountMinor, effectiveDate, reason }`. Records a revision.               |
+| GET    | `/api/meta/filters`                                                                     | Distinct countries / departments / job titles for dropdowns                 |
+| GET    | `/api/insights/summary`                                                                 | Headcount, total annual cost (USD), median (USD)                            |
+| GET    | `/api/insights/by-country`                                                              | Per country: headcount, min/max/avg/median (local + USD)                    |
+| GET    | `/api/insights/by-department`                                                           | Per department: headcount, total cost (USD), median (USD)                   |
+| GET    | `/api/insights/by-job-title?country=`                                                   | Per title: min/max/avg/median                                               |
+| GET    | `/api/insights/distribution?country=`                                                   | Salary band histogram                                                       |
+| GET    | `/api/insights/recent-changes?limit=`                                                   | Latest revisions                                                            |
 
 **Error shape:** `{ "error": { "code": "VALIDATION_ERROR", "message": "...", "details": [...] } }`. The status codes used are 400 (validation), 404 (not found), 409 (unique conflict) and 500 (unexpected).
 
@@ -115,10 +115,10 @@ FX rates to USD are a static constant in `domain/fx.ts` (for example INR, GBP, E
 
 ## Testing strategy
 
-| Level | Tooling | Covers |
-|---|---|---|
-| Unit | Vitest | Domain (money, median/percentiles, FX), services with fake repositories, seed generator determinism |
+| Level           | Tooling                          | Covers                                                                                                            |
+| --------------- | -------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| Unit            | Vitest                           | Domain (money, median/percentiles, FX), services with fake repositories, seed generator determinism               |
 | API integration | Vitest + Supertest + temp SQLite | Pagination boundaries, filter combinations, validation errors, aggregations against a small hand-computed fixture |
-| Component | Vitest + React Testing Library | Employee list filters, salary form validation, empty and error states |
+| Component       | Vitest + React Testing Library   | Employee list filters, salary form validation, empty and error states                                             |
 
 Rules: no network calls, an injected clock, a fixed faker seed, and the whole suite runs in seconds. Core services are built test-first.
