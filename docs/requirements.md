@@ -25,7 +25,7 @@ Replace the spreadsheets ACME's HR team uses to manage salary data for **~10,000
 
 ### Business rules
 
-- Salary means **annual gross base salary**. It is stored as an integer in minor units (for example cents) together with an ISO currency code. Floats are never used for money.
+- Salary means **annual gross base salary**. It is stored as an integer in whole currency units (salaries are agreed in round numbers) together with an ISO currency code. Floats are never used for money.
 - A salary amount must be greater than 0. A salary change needs an effective date and a reason.
 - Each salary change writes one `SalaryRevision` row (old amount → new amount) **in the same transaction** as the update.
 - Employee code and email are unique.

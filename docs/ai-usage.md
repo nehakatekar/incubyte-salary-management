@@ -41,3 +41,13 @@ This project was built with **Claude Code** (an agentic CLI) as a pair programme
   - Installing "latest" pulled **TypeScript 7**, which `typescript-eslint` does not support yet (peer range `<6.1`). Pinned TypeScript to `~5.9` across workspaces instead of forcing the install with `--legacy-peer-deps`.
   - The first root `dev` script used `&` to run server and client together, which does not run in parallel on Windows. Replaced it with `concurrently`.
 - **Verification:** `npm run lint`, `format:check`, `typecheck`, `test` (server + client) and `build` all pass. The built server answered `GET /api/health` with `{"status":"ok"}`.
+
+### Phase 2 — Data layer & seed
+
+- **Prompt (summary):** "Add the Prisma schema with indexes, then write tests for a deterministic 10k-employee generator **before** implementing it, then the seed script."
+- **Outcome:** Schema and initial migration, `generateEmployees()` (pure and seeded, with locale-specific names, weighted country/department mix and per-country pay factors), and a seed script that loads 10k employees and ~16k revisions in ~2 s.
+- **Corrected along the way:**
+  - npm's `latest` for Prisma was an **8.0 release candidate**. Pinned to stable 6.19 instead of building on a pre-release (ADR-001).
+  - **Money in minor units would overflow** Prisma's 32-bit `Int` for senior INR salaries (₹21M+ in paise). Switched to whole currency units and updated the docs (ADR-002). This was caught while writing the schema, before any data depended on it.
+  - A throwaway verification command hung because of a stray `cat` waiting on stdin. It was stopped and re-run. This was a tooling slip, not a code issue.
+- **Verification:** 15 generator tests (determinism, uniqueness, currency per country, seniority pay ordering, revision chain integrity) were seen failing first, then passing. The seed was run twice to confirm it is re-runnable. Distributions were checked with SQL (headcount per country, pay by title, ~4% terminated).

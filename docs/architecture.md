@@ -58,7 +58,7 @@ erDiagram
     string employmentType
     date hireDate
     string status "ACTIVE | TERMINATED"
-    int salaryMinor "current annual base, minor units"
+    int salary "current annual base, whole currency units"
     string currency "ISO 4217"
     date salaryEffectiveDate
     datetime createdAt
@@ -67,8 +67,8 @@ erDiagram
   SALARY_REVISION {
     int id PK
     int employeeId FK
-    int previousMinor "null for initial salary"
-    int newMinor
+    int previousSalary "null for initial salary"
+    int newSalary
     string currency
     date effectiveDate
     string reason
@@ -92,7 +92,7 @@ FX rates to USD are a static constant in `domain/fx.ts` (for example INR, GBP, E
 | POST   | `/api/employees`                                                                        | Create (creates the initial revision)                                       |
 | PATCH  | `/api/employees/:id`                                                                    | Update non-salary fields                                                    |
 | DELETE | `/api/employees/:id`                                                                    | Soft terminate                                                              |
-| POST   | `/api/employees/:id/salary`                                                             | `{ amountMinor, effectiveDate, reason }`. Records a revision.               |
+| POST   | `/api/employees/:id/salary`                                                             | `{ salary, effectiveDate, reason }`. Records a revision.                    |
 | GET    | `/api/meta/filters`                                                                     | Distinct countries / departments / job titles for dropdowns                 |
 | GET    | `/api/insights/summary`                                                                 | Headcount, total annual cost (USD), median (USD)                            |
 | GET    | `/api/insights/by-country`                                                              | Per country: headcount, min/max/avg/median (local + USD)                    |
@@ -108,7 +108,7 @@ FX rates to USD are a static constant in `domain/fx.ts` (for example INR, GBP, E
 1. **Offset pagination.** At 10k rows offset is cheap and supports "jump to page N". Keyset pagination is the upgrade path.
 2. **Search with `LIKE`** on indexed columns, debounced on the client. SQLite FTS5 is the upgrade path.
 3. **Aggregations in SQL** (`GROUP BY`). Median is computed per group from sorted values. Insights never load all rows into JS just to sum them.
-4. **Money as integer minor units plus currency**, so there are no floating-point errors.
+4. **Money as whole-unit integers plus currency**, so there are no floating-point errors (see `decisions.md`, ADR-002).
 5. **Append-only revisions** are written transactionally with the salary update.
 6. **SQLite** is suggested by the brief and has zero ops. Prisma keeps a move to Postgres to a config change.
 7. **Single deployable**: Express serves the static client build.

@@ -1,0 +1,58 @@
+// Data model for ACME salary management. See docs/architecture.md.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Employee {
+  id                  Int              @id @default(autoincrement())
+  employeeCode        String           @unique
+  fullName            String
+  email               String           @unique
+  jobTitle            String
+  department          String
+  country             String
+  /// FULL_TIME | PART_TIME | CONTRACT (validated in the application layer)
+  employmentType      String
+  hireDate            DateTime
+  /// ACTIVE | TERMINATED
+  status              String           @default("ACTIVE")
+  /// Current annual gross base salary in whole units of `currency`.
+  salary              Int
+  /// ISO 4217 code, determined by country.
+  currency            String
+  salaryEffectiveDate DateTime
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+  revisions           SalaryRevision[]
+
+  @@index([country])
+  @@index([department])
+  @@index([jobTitle])
+  @@index([status])
+  @@index([country, department])
+  @@index([fullName])
+}
+
+/// Append-only history of salary changes, written in the same transaction
+/// as the change to Employee.salary.
+model SalaryRevision {
+  id             Int      @id @default(autoincrement())
+  employeeId     Int
+  employee       Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  /// Null for the initial salary.
+  previousSalary Int?
+  newSalary      Int
+  currency       String
+  effectiveDate  DateTime
+  reason         String
+  createdAt      DateTime @default(now())
+
+  @@index([employeeId, effectiveDate])
+  @@index([effectiveDate])
+}
