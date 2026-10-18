@@ -37,6 +37,15 @@ All are well inside the < 100 ms API target in `requirements.md`. The first requ
 | `meta/filters` called often | Cache in memory and invalidate on employee writes                  |
 | Concurrent writers          | Move to Postgres: change the Prisma `provider` and run a migration |
 
+## Client
+
+| Concern           | Approach / measurement                                                            |
+| ----------------- | --------------------------------------------------------------------------------- |
+| Request volume    | Search debounced at 300 ms; filter options cached for 5 min; list cached for 30 s |
+| Perceived latency | `keepPreviousData` keeps the current page on screen while the next page loads     |
+| Payload           | At most 100 rows per page; salary history only loaded on the detail page          |
+| Bundle            | ~666 kB / ~208 kB gzip, single chunk. Next step: lazy-load routes (`React.lazy`)  |
+
 ## Insights API
 
 Measured warm on the 10k data set (9,594 active employees).
@@ -53,3 +62,4 @@ Measured warm on the 10k data set (9,594 active employees).
 
 All within the < 100 ms target, but org-wide views are the heaviest queries in the system because each one scans and sorts all active salaries. **Next step if headcount grows:** cache each aggregate in memory, keyed by view and country, and invalidate on any employee or salary write. Writes are rare compared to reads, so the hit rate would be very high.
 
+Client: the insights page is code-split. The main bundle stays at ~208 kB gzip, and the charts chunk (~108 kB gzip) loads on first visit to Insights.

@@ -24,20 +24,30 @@ Services receive repositories (and a clock) through constructor injection. Unit 
 ## Repository layout
 
 ```
-/docs                 requirements, architecture, decisions, ai-usage, performance
+/docs                   requirements, architecture, decisions, performance, ai-usage
 /server
-  prisma/             schema.prisma, migrations, seed.ts
+  prisma/               schema.prisma, migrations/
   src/
-    domain/           money.ts, stats.ts, fx.ts
-    repositories/
-    services/
-    routes/
-    validation/       zod schemas
-    app.ts            express app factory (no listen; easy to test)
-    index.ts          bootstrap
-  tests/
+    domain/             countries, fx, employee constants, clock (pure, no I/O)
+    validation/         Zod request schemas
+    repositories/       the only code that touches Prisma
+    services/           business rules (employees, salary changes)
+    routes/             Express routers: parse -> call service -> map to DTO
+    http/               DTO mapping, central error handler
+    seed/               deterministic generator + seed script
+    errors.ts           AppError hierarchy (404 / 409 / 422)
+    app.ts              createApp({ prisma, clock }): no listen, easy to test
+    index.ts            bootstrap
+  tests/                API + service tests, temp-SQLite helper, fixtures
 /client
-  src/{api,components,pages,hooks}
+  src/
+    api/                typed fetch client, ApiError, endpoint functions, DTO types
+    hooks/              TanStack Query hooks (queries, mutations, cache invalidation)
+    features/employees/ list page, filters, detail page, dialogs (+ tests)
+    features/insights/  pay insights dashboard
+    components/         layout, page states, status chip, notifications
+    lib/                formatting (money, dates, percentages)
+    test/               render-with-providers + in-memory fetch mock
 ```
 
 npm workspaces (`server`, `client`) are driven by root scripts: `dev`, `test`, `lint`, `typecheck`, `seed`, `build`.

@@ -73,6 +73,18 @@ This project was built with **Claude Code** (an agentic CLI) as a pair programme
 - **Product gap found by manual testing:** the API accepted an 18× raise (£55,400 → £999,999). I decided not to block it server-side, because legitimate large changes exist, and planned a UI confirmation for changes over ±30% instead (ADR-007).
 - **Verification:** 83 server tests pass in ~2.8 s. Lint, typecheck and format are clean. A manual change against the 10k DB returned 201 in ~55 ms. The data was re-seeded afterwards.
 
+### Phase 6 — UI (built before insights, by choice)
+
+- **Why the reorder:** I chose to build the UI before the insights API, so the core HR workflows (find, view, edit, change salary) could be exercised end to end sooner. The Insights page is a placeholder until Phase 5.
+- **Prompt (summary):** "Build the React UI: employee list with server-side paging/search/filters/sort kept in the URL, a detail page with salary history, and create/edit/change-salary/terminate dialogs. Mirror the server's validation, require confirmation for salary changes over ±30%, and write component tests with a mocked fetch."
+- **Outcome:** API layer with typed errors, React Query hooks with cache invalidation, list/detail pages, four dialogs, and 17 component and unit tests.
+- **Corrected along the way:**
+  - npm's `latest` for React Router was a new **8.0 major**, so I pinned 7.x. MUI X DataGrid **does not support MUI 9**, so I used a plain MUI table instead (ADR-008).
+  - The "add employee" form needed every supported country, but `/meta/filters` only returned countries that already had staff. I added `supportedCountries` to the endpoint, test first.
+  - Two attempts to write files via shell heredocs failed on quoting. I switched to writing files directly. Nothing broken was committed.
+- **How I checked the tests were meaningful:** all 17 passed on the first run, which deserves suspicion, so I mutation-checked them. Removing the ±30% guard, the future-date check, the search debounce, or the page-1 reset each made a test fail.
+- **Visual verification:** I ran the built UI against the 10k database and screenshotted the list, a filtered and sorted view, and an employee page with headless Edge to confirm layout, currency formatting and history rendering.
+
 ### Phase 5 — Pay insights
 
 - **Prompt (summary):** "Build insights answering 'how does the org pay people': summary, by country, by department, by job title (optionally per country), salary distribution and recent changes. Do all aggregation in SQL, write tests first against a hand-computed dataset, then build the dashboard following the data-viz skill."

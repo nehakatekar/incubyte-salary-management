@@ -202,6 +202,7 @@ describe('GET /api/meta/filters', () => {
       jobTitles: ['Account Executive', 'Software Engineer'],
       statuses: ['ACTIVE', 'TERMINATED'],
       employmentTypes: ['FULL_TIME', 'PART_TIME', 'CONTRACT'],
+      supportedCountries: expect.arrayContaining([{ name: 'India', currency: 'INR' }]),
     });
   });
 });

@@ -54,6 +54,22 @@ Short records of decisions that shaped the system: the context, what was decided
 - **Not enforced in the API:** an upper bound on the size of a change. A manual test accepted £55,400 → £999,999, almost certainly a typo, but large legitimate changes exist. The UI will ask for confirmation when a change exceeds ±30% instead of blocking it.
 - **Consequences:** Every salary change is explained (it has a reason), ordered, and attributable to a date. All rules are unit-tested with a fake repository, and mutation-checked: removing any rule makes a test fail.
 
+## ADR-008: UI architecture
+
+- **Context:** The HR manager needs to find people quickly among 10k employees, change salaries safely, and not lose their place.
+- **Decision:**
+  - **React Router 7, TanStack Query 5, MUI 9.** React Router is pinned to the stable 7.x line because npm's `latest` was a brand-new 8.0 major.
+  - **MUI `Table` rather than MUI X DataGrid.** DataGrid does not support MUI 9 yet, and paging, sorting and filtering are all server-side anyway, so a plain table with `TableSortLabel` and `TablePagination` is enough and adds no dependency.
+  - **List state lives in the URL** (`?country=India&sortBy=salary&page=3`). Views can be bookmarked and shared, the back button works, and changing any filter resets to page 1. The list **defaults to active employees** because that is what HR works with day to day.
+  - **Search is debounced (300 ms)**, so typing "lovelace" sends one request, not eight. `keepPreviousData` keeps the current page visible while the next one loads.
+  - **Every write invalidates employee queries** (list, detail, filter options), so the UI never shows stale data after a change.
+  - **Client-side validation mirrors the server rules** for fast feedback, but the server stays authoritative and its error messages are always shown, for example a 409 from a concurrent salary edit.
+  - **Large salary changes (> ±30%) need an explicit "I have checked" confirmation** (ADR-007). A live preview (`£60,000 → £66,000 (+10.0%)`) catches typos before they are saved.
+  - **Sorting by salary without a country filter shows a hint** that salaries are in local currencies, so the HR manager does not compare ₹ and £ by mistake.
+  - Forms use plain React state. They are small enough that a form library would add more weight than it removes.
+  - Client DTO types are hand-written to mirror `server/src/http/dto.ts`. A shared types package or OpenAPI generation is the next step if the API grows.
+- **Consequences:** The bundle is ~666 kB (~208 kB gzip) as a single chunk, which is acceptable for an internal tool. Route-level code splitting is the easy next step if load time matters.
+
 ## ADR-009: Pay insights: SQL aggregation, USD for comparison, local for detail
 
 - **Context:** The brief's second goal is to "answer questions about how the org pays people" across 8 countries and 7 currencies. Comparing raw salaries across currencies is meaningless (₹2.5M vs £61k), but converting everything to USD hides the local pay bands HR actually negotiates in.
