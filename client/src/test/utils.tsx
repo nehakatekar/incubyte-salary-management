@@ -1,12 +1,28 @@
-import { CssBaseline, ThemeProvider } from '@mui/material';
+import { createTheme, CssBaseline, ThemeProvider } from '@mui/material';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import type { ReactElement } from 'react';
 import { MemoryRouter, Route, Routes } from 'react-router';
 import { vi } from 'vitest';
 import type { Employee, FilterValues, Page } from '../api/types';
 import { NotificationProvider } from '../components/Notifications';
 import { theme } from '../theme';
+
+/** The app theme without ripples and transitions: animation only costs time in jsdom. */
+const testTheme = createTheme(theme, {
+  transitions: { create: () => 'none' },
+  components: { MuiButtonBase: { defaultProps: { disableRipple: true } } },
+});
+
+/**
+ * Enters a whole value as one user action (focus, then paste). Use `userEvent.type`
+ * instead when the behaviour under test depends on individual keystrokes.
+ */
+export async function fill(field: HTMLElement, value: string) {
+  await userEvent.click(field);
+  await userEvent.paste(value);
+}
 
 export interface ApiCall {
   method: string;
@@ -54,7 +70,7 @@ export function renderWithProviders(ui: ReactElement, { route = '/', path = '*' 
   });
   return render(
     <QueryClientProvider client={queryClient}>
-      <ThemeProvider theme={theme}>
+      <ThemeProvider theme={testTheme}>
         <CssBaseline />
         <MemoryRouter initialEntries={[route]}>
           <NotificationProvider>

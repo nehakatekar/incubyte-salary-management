@@ -1,7 +1,7 @@
 import { fireEvent, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ChangeSalaryDialog } from './ChangeSalaryDialog';
-import { buildEmployee, mockApi, on, renderWithProviders } from '../../test/utils';
+import { fill, buildEmployee, mockApi, on, renderWithProviders } from '../../test/utils';
 
 // Ada earns £60,000, effective 2023-04-01.
 const employee = buildEmployee();
@@ -18,8 +18,8 @@ describe('ChangeSalaryDialog', () => {
     return onClose;
   };
   const typeSalary = (amount: string) =>
-    userEvent.type(screen.getByLabelText(/new annual base salary/i), amount);
-  const typeReason = (reason: string) => userEvent.type(screen.getByLabelText(/reason/i), reason);
+    fill(screen.getByLabelText(/new annual base salary/i), amount);
+  const typeReason = (reason: string) => fill(screen.getByLabelText(/reason/i), reason);
   const save = () => userEvent.click(screen.getByRole('button', { name: 'Save salary' }));
 
   it('previews the change against the current salary', async () => {
@@ -97,7 +97,7 @@ describe('ChangeSalaryDialog', () => {
         {
           error: {
             code: 'CONFLICT',
-            message: 'Salary was changed by someone else; reload and try again',
+            message: 'Employee was changed by someone else; reload and try again',
           },
         },
         409,

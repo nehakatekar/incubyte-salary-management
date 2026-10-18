@@ -98,3 +98,16 @@ This project was built with **Claude Code** (an agentic CLI) as a pair programme
   - Recharts pushed the bundle past 1 MB. I lazy-loaded the insights route, so employee screens stay at ~208 kB gzip.
   - jsdom has no `ResizeObserver`, which Recharts needs, so I added a minimal stub in the test setup.
 - **Verification:** 107 server and 23 client tests pass. Lint, typecheck and build are clean. Endpoints were timed on 10k rows (15–85 ms).
+
+### UI hardening (between Phase 6 and Phase 7)
+
+- **Prompt (summary):** "Is anything remaining UI-wise?" I audited which components had tests and which views had never been seen rendered, then fixed the gaps a reviewer would notice.
+- **Added:**
+  - Tests for the **employee detail page** (history rendering, actions disabled for terminated staff, not-found state), the **add/edit form** (validation, trimmed payload, edit sends only changed fields, 409 shown in place), and the **terminate dialog** (confirm vs cancel).
+  - An **error boundary**, keyed by route, so a rendering crash shows a recovery message instead of a blank page. It was written test-first.
+- **Honest note on test-first:** the form, detail and terminate tests passed immediately, because they describe behaviour that already existed. To prove they still guard something, I mutation-checked them: sending every field on edit, dropping country validation, and not disabling actions for terminated staff each made a test fail.
+- **Visual check of interactions:** I drove the real app (10k DB) with Playwright and the installed Edge to open every dialog and check phone width. Found and fixed:
+  - The app bar title wrapped onto two lines on phones, so it is shortened to "ACME" below the `sm` breakpoint.
+  - A console 404 came from the missing favicon. I added an inline SVG icon, and a re-run reported no browser errors.
+  - My first script failed because `Escape` closed an autocomplete popup, not the dialog. That was a script bug, fixed by closing dialogs via Cancel.
+- **Process correction:** CI **failed on commit `167bc7c`** (Phase 5) at `format:check`. When splitting the Phase 5/6 commits, I staged a hand-trimmed `docs/performance.md` and verified it with typecheck and tests only, not the full CI sequence. The next commit fixed it, and history was not rewritten. From now on, every commit is preceded by the exact CI steps: lint, format check, typecheck, test, build.
