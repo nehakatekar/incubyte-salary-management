@@ -140,25 +140,22 @@ export class EmployeeRepository {
     return rows.map((row) => Number(row.id));
   }
 
+  /**
+   * Distinct values for the list filters. `groupBy` runs as SQL GROUP BY; Prisma's
+   * `findMany({ distinct })` would instead fetch every row and de-duplicate in
+   * memory, which costs seconds when the database is across a network.
+   */
   async filterValues(): Promise<FilterValues> {
     const { employee } = this.prisma;
     const [countries, departments, jobTitles] = await Promise.all([
       employee
-        .findMany({ distinct: ['country'], select: { country: true }, orderBy: { country: 'asc' } })
+        .groupBy({ by: ['country'], orderBy: { country: 'asc' } })
         .then((rows) => rows.map((row) => row.country)),
       employee
-        .findMany({
-          distinct: ['department'],
-          select: { department: true },
-          orderBy: { department: 'asc' },
-        })
+        .groupBy({ by: ['department'], orderBy: { department: 'asc' } })
         .then((rows) => rows.map((row) => row.department)),
       employee
-        .findMany({
-          distinct: ['jobTitle'],
-          select: { jobTitle: true },
-          orderBy: { jobTitle: 'asc' },
-        })
+        .groupBy({ by: ['jobTitle'], orderBy: { jobTitle: 'asc' } })
         .then((rows) => rows.map((row) => row.jobTitle)),
     ]);
     return { countries, departments, jobTitles };
