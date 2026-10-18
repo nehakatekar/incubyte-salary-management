@@ -2,7 +2,9 @@
 
 A web app for ACME's HR manager to manage salary data for **10,000 employees across 8 countries**, replacing spreadsheets, and to answer the question _"how does the organisation pay people?"_.
 
-> **Live demo:** _link to be added after deployment_ · **Video walkthrough:** _link to be added_
+> **Live demo:** [acme-salary-management-smr3.onrender.com](https://acme-salary-management-smr3.onrender.com) · **Video walkthrough:** _link to be added_
+>
+> Hosted on a free plan: after 15 minutes without visitors the app sleeps, and the first visit takes about a minute to wake it.
 
 ![Pay insights dashboard](docs/images/insights.png)
 

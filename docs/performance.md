@@ -64,3 +64,22 @@ Measured warm on the 10k data set (9,594 active employees).
 All within the < 100 ms target, but org-wide views are the heaviest queries in the system because each one scans and sorts all active salaries. **Next step if headcount grows:** cache each aggregate in memory, keyed by view and country, and invalidate on any employee or salary write. Writes are rare compared to reads, so the hit rate would be very high.
 
 Client: the insights page and the employee salary chart are code-split. The main bundle is ~179 kB gzip, and the charting library (~100 kB gzip) loads only when a chart is first shown.
+
+## Deployed (Render free + Turso, both in Oregon)
+
+Measured from India against the live service, median of 5 warm requests. **Total** includes the network round trip to Oregon (~360 ms, the same as `/api/health`, which does no work); **server + database** is what remains once that is subtracted.
+
+| Request                                               | Total   | Server + database |
+| ----------------------------------------------------- | ------- | ----------------- |
+| `GET /api/health` (network baseline)                  | ~360 ms | –                 |
+| `GET /api/employees` (first page)                     | ~385 ms | ~25 ms            |
+| `?country=India&department=Engineering&sortBy=salary` | ~360 ms | < 10 ms           |
+| `?search=sharma`                                      | ~365 ms | < 10 ms           |
+| `GET /api/employees/:id`                              | ~365 ms | < 10 ms           |
+| `GET /api/meta/filters`                               | ~385 ms | ~25 ms            |
+| `GET /api/insights/summary`                           | ~390 ms | ~25 ms            |
+| `GET /api/insights/by-country`                        | ~430 ms | ~70 ms            |
+
+**Found only in production:** `/api/meta/filters` first took **~2.2 s** of server time. Prisma's `findMany({ distinct })` fetches every row and de-duplicates in memory: invisible against a local file, but over the network to Turso it moved 30,000 rows to return ~36 values. Switching to `groupBy` (SQL `GROUP BY`) brought it to ~25 ms.
+
+For users far from Oregon, the round trip dominates. Serving from a region closer to the users, with the database in the same region, is the main lever. The free plan's idle sleep adds about a minute to the first visit after a quiet period.
