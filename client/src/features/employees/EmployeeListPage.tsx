@@ -16,7 +16,7 @@ import {
   TableSortLabel,
   Typography,
 } from '@mui/material';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link as RouterLink, useNavigate } from 'react-router';
 import type { Employee, SortField } from '../../api/types';
 import { EmptyState, ErrorState, LoadingState } from '../../components/PageStates';
@@ -43,6 +43,12 @@ export function EmployeeListPage() {
   const { data, error, isPending, isFetching, refetch } = useEmployeeList(params);
   const [creating, setCreating] = useState(false);
   const navigate = useNavigate();
+
+  // A stale bookmark or a shrinking result set can point past the end; show the last page instead.
+  const lastPage = data?.totalPages ?? 0;
+  useEffect(() => {
+    if (lastPage > 0 && params.page > lastPage) update({ page: String(lastPage) });
+  }, [lastPage, params.page, update]);
 
   const toggleSort = (field: SortField) => {
     const sortDir = params.sortBy === field && params.sortDir === 'asc' ? 'desc' : 'asc';
@@ -119,7 +125,7 @@ export function EmployeeListPage() {
             <TablePagination
               component="div"
               count={data.total}
-              page={params.page - 1}
+              page={Math.min(params.page, Math.max(lastPage, 1)) - 1}
               rowsPerPage={params.pageSize}
               rowsPerPageOptions={PAGE_SIZES}
               onPageChange={(_event, page) => update({ page: String(page + 1) })}

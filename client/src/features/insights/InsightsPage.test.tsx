@@ -118,6 +118,30 @@ describe('InsightsPage', () => {
     expect(api.callsTo('/insights/distribution').at(-1)?.query.get('country')).toBe('India');
   });
 
+  it('links each country to its employees', async () => {
+    mockInsightsApi();
+    renderWithProviders(<InsightsPage />);
+
+    const countries = await screen.findByRole('table', { name: 'Pay by country' });
+
+    expect(within(countries).getByRole('link', { name: 'India' })).toHaveAttribute(
+      'href',
+      '/employees?country=India',
+    );
+  });
+
+  it('links each job title to its employees, within the chosen country', async () => {
+    mockInsightsApi();
+    renderWithProviders(<InsightsPage />, { route: '/insights?country=India', path: '/insights' });
+
+    const titles = await screen.findByRole('table', { name: 'Pay by job title' });
+
+    expect(await within(titles).findByRole('link', { name: 'Software Engineer' })).toHaveAttribute(
+      'href',
+      '/employees?country=India&jobTitle=Software+Engineer',
+    );
+  });
+
   it('offers the distribution as a table so no value is hover-only', async () => {
     mockInsightsApi();
     renderWithProviders(<InsightsPage />);

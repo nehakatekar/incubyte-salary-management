@@ -1,16 +1,23 @@
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { Box, Button, Card, CardContent, Grid, Stack, Typography } from '@mui/material';
-import { useState, type ReactNode } from 'react';
+import { lazy, Suspense, useState, type ReactNode } from 'react';
 import { Link as RouterLink, useParams } from 'react-router';
 import { ApiError } from '../../api/client';
 import { EmptyState, ErrorState, LoadingState } from '../../components/PageStates';
 import { StatusChip } from '../../components/StatusChip';
-import { useEmployee } from '../../hooks/useEmployees';
+import { TableLink } from '../../components/TableLink';
+import { isValidId, useEmployee } from '../../hooks/useEmployees';
 import { formatDate, formatMoney, humanize } from '../../lib/format';
+import { employeesUrl } from '../../lib/links';
 import { ChangeSalaryDialog } from './ChangeSalaryDialog';
 import { EmployeeFormDialog } from './EmployeeFormDialog';
 import { SalaryHistory } from './SalaryHistory';
 import { TerminateDialog } from './TerminateDialog';
+
+// The charting library loads only when a chart is shown, keeping the list page bundle small.
+const SalaryTrendChart = lazy(() =>
+  import('./SalaryTrendChart').then((module) => ({ default: module.SalaryTrendChart })),
+);
 
 type OpenDialog = 'edit' | 'salary' | 'terminate' | null;
 
@@ -26,8 +33,8 @@ export function EmployeeDetailPage() {
     </Button>
   );
 
-  if (isPending) return <LoadingState label="Loading employee…" />;
-  if (error instanceof ApiError && error.status === 404) {
+  const notFound = !isValidId(id) || (error instanceof ApiError && error.status === 404);
+  if (notFound) {
     return (
       <>
         {backLink}
@@ -38,6 +45,7 @@ export function EmployeeDetailPage() {
       </>
     );
   }
+  if (isPending) return <LoadingState label="Loading employee…" />;
   if (error) return <ErrorState error={error} onRetry={() => void refetch()} />;
 
   const isActive = employee.status === 'ACTIVE';
@@ -58,7 +66,20 @@ export function EmployeeDetailPage() {
             <StatusChip status={employee.status} />
           </Stack>
           <Typography color="text.secondary">
-            {employee.employeeCode} · {employee.jobTitle} · {employee.department}
+            {employee.employeeCode} ·{' '}
+            <TableLink
+              variant="subtle"
+              to={employeesUrl({ country: employee.country, jobTitle: employee.jobTitle })}
+            >
+              {employee.jobTitle}
+            </TableLink>{' '}
+            ·{' '}
+            <TableLink
+              variant="subtle"
+              to={employeesUrl({ country: employee.country, department: employee.department })}
+            >
+              {employee.department}
+            </TableLink>
           </Typography>
         </Box>
         <Stack direction="row" spacing={1}>
@@ -108,6 +129,9 @@ export function EmployeeDetailPage() {
               <Typography variant="h6" component="h3" sx={{ mb: 1 }}>
                 Salary history
               </Typography>
+              <Suspense fallback={null}>
+                <SalaryTrendChart revisions={employee.revisions} currency={employee.currency} />
+              </Suspense>
               <SalaryHistory revisions={employee.revisions} />
             </CardContent>
           </Card>

@@ -28,11 +28,21 @@ export async function request<T>(
   path: string,
   { query, body, method = 'GET' }: RequestOptions = {},
 ): Promise<T> {
-  const response = await fetch(`/api${path}${toQueryString(query)}`, {
-    method,
-    headers: body === undefined ? undefined : { 'Content-Type': 'application/json' },
-    body: body === undefined ? undefined : JSON.stringify(body),
-  });
+  let response: Response;
+  try {
+    response = await fetch(`/api${path}${toQueryString(query)}`, {
+      method,
+      headers: body === undefined ? undefined : { 'Content-Type': 'application/json' },
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
+  } catch {
+    // fetch only rejects when no response arrived at all (offline, server down, DNS).
+    throw new ApiError(
+      0,
+      'NETWORK_ERROR',
+      'Cannot reach the server. Check your connection and try again.',
+    );
+  }
 
   const payload = await response.json().catch(() => null);
   if (!response.ok) {
@@ -45,6 +55,15 @@ export async function request<T>(
     );
   }
   return payload as T;
+}
+
+/**
+ * React Query retry policy: a 4xx (not found, validation) will fail the same way
+ * again, so only server and network errors get one more attempt.
+ */
+export function shouldRetry(failureCount: number, error: unknown): boolean {
+  const isClientError = error instanceof ApiError && error.status >= 400 && error.status < 500;
+  return !isClientError && failureCount < 1;
 }
 
 function toQueryString(query: Query = {}): string {

@@ -1,8 +1,10 @@
 import { Bar, BarChart, LabelList, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { useNavigate } from 'react-router';
 import type { DepartmentInsight } from '../../api/insights';
 import { formatCompactMoney, formatMoney } from '../../lib/format';
-import { ChartTooltip } from './ChartTooltip';
-import { AXIS_TICK, CHART } from './chartTheme';
+import { employeesUrl } from '../../lib/links';
+import { ChartTooltip } from '../../components/charts/ChartTooltip';
+import { AXIS_TICK, CHART } from '../../components/charts/chartTheme';
 
 const ROW_HEIGHT = 36;
 const PADDING = 8;
@@ -13,6 +15,7 @@ const PADDING = 8;
  */
 export function DepartmentCostChart({ data }: { data: DepartmentInsight[] }) {
   const usd = (value: number) => formatCompactMoney(value, 'USD');
+  const navigate = useNavigate();
 
   return (
     <ResponsiveContainer width="100%" height={data.length * ROW_HEIGHT + PADDING}>
@@ -34,7 +37,7 @@ export function DepartmentCostChart({ data }: { data: DepartmentInsight[] }) {
               <ChartTooltip
                 value={formatMoney(row.totalCostUsd, 'USD')}
                 label={`${row.department} · annual pay cost`}
-                detail={`${row.headcount.toLocaleString()} people · median ${formatMoney(row.medianUsd, 'USD')}`}
+                detail={`${row.headcount.toLocaleString()} people · median ${formatMoney(row.medianUsd, 'USD')} · select to see the team`}
               />
             ) : null;
           }}
@@ -43,6 +46,11 @@ export function DepartmentCostChart({ data }: { data: DepartmentInsight[] }) {
           dataKey="totalCostUsd"
           fill={CHART.series}
           barSize={20}
+          cursor="pointer"
+          onClick={(entry) => {
+            const department = (entry as { payload?: DepartmentInsight }).payload?.department;
+            if (department) navigate(employeesUrl({ department }));
+          }}
           radius={[0, 4, 4, 0]}
           isAnimationActive={false}
         >

@@ -24,7 +24,15 @@ export function useEmployeeList(params: ListEmployeesParams) {
 }
 
 export function useEmployee(id: number) {
-  return useQuery({ queryKey: employeeKeys.detail(id), queryFn: () => employeesApi.get(id) });
+  return useQuery({
+    queryKey: employeeKeys.detail(id),
+    queryFn: () => employeesApi.get(id),
+    enabled: isValidId(id),
+  });
+}
+
+export function isValidId(id: number): boolean {
+  return Number.isInteger(id) && id > 0;
 }
 
 export function useFilterValues() {

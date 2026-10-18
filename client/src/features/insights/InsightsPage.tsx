@@ -54,7 +54,10 @@ export function InsightsPage() {
 
       <SummaryTiles />
 
-      <Section title="Pay by country" subtitle="Min, median and max in local currency">
+      <Section
+        title="Pay by country"
+        subtitle="Min, median and max in local currency. Select a country to see its people."
+      >
         <QueryContent query={useCountryInsights()}>
           {(rows) => <CountryTable rows={rows} />}
         </QueryContent>
@@ -62,7 +65,10 @@ export function InsightsPage() {
 
       <Grid container spacing={2} sx={{ alignItems: 'flex-start' }}>
         <Grid size={{ xs: 12, lg: 5 }}>
-          <Section title="Annual pay cost by department" subtitle="USD, largest first">
+          <Section
+            title="Annual pay cost by department"
+            subtitle="USD, largest first. Select a bar to see the team."
+          >
             <QueryContent query={useDepartmentInsights()}>
               {(data) => <DepartmentCostChart data={data} />}
             </QueryContent>
@@ -102,10 +108,10 @@ export function InsightsPage() {
           <Grid size={{ xs: 12, lg: 7 }}>
             <Section
               title="Pay range by job title"
-              subtitle="Dot marks the median; bar spans min to max"
+              subtitle="Dot marks the median; bar spans min to max. Select a title to see who holds it."
             >
               <QueryContent query={useJobTitleInsights(country)}>
-                {(data) => <JobTitleTable data={data} />}
+                {(data) => <JobTitleTable data={data} country={country} />}
               </QueryContent>
             </Section>
           </Grid>

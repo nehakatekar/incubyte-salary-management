@@ -1,8 +1,8 @@
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import type { SalaryDistribution } from '../../api/insights';
 import { formatCompactMoney } from '../../lib/format';
-import { ChartTooltip } from './ChartTooltip';
-import { AXIS_TICK, CHART } from './chartTheme';
+import { ChartTooltip } from '../../components/charts/ChartTooltip';
+import { AXIS_TICK, CHART } from '../../components/charts/chartTheme';
 
 /** Histogram of salaries: touching columns separated by a 2px surface gap. */
 export function SalaryDistributionChart({ data }: { data: SalaryDistribution }) {

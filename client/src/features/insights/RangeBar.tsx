@@ -1,5 +1,5 @@
 import { Box } from '@mui/material';
-import { CHART } from './chartTheme';
+import { CHART } from '../../components/charts/chartTheme';
 
 interface Props {
   min: number;

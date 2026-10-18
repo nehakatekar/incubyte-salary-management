@@ -15,7 +15,9 @@ import type {
   RecentChange,
   SalaryDistribution,
 } from '../../api/insights';
+import { TableLink } from '../../components/TableLink';
 import { formatDate, formatMoney, formatPercent } from '../../lib/format';
+import { employeesUrl } from '../../lib/links';
 import { RangeBar } from './RangeBar';
 
 const num = { fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' } as const;
@@ -60,7 +62,7 @@ export function CountryTable({ rows }: { rows: CountryInsight[] }) {
       {rows.map((row) => (
         <TableRow key={row.country}>
           <TableCell sx={{ whiteSpace: 'nowrap' }}>
-            {row.country}{' '}
+            <TableLink to={employeesUrl({ country: row.country })}>{row.country}</TableLink>{' '}
             <Typography component="span" variant="body2" color="text.secondary">
               {row.currency}
             </Typography>
@@ -89,7 +91,8 @@ export function CountryTable({ rows }: { rows: CountryInsight[] }) {
   );
 }
 
-export function JobTitleTable({ data }: { data: JobTitleInsights }) {
+/** `country` scopes the drill-down links when the table shows a single country. */
+export function JobTitleTable({ data, country }: { data: JobTitleInsights; country?: string }) {
   const scaleMax = Math.max(...data.rows.map((row) => row.max), 1);
   const money = (value: number) => formatMoney(value, data.currency);
 
@@ -109,7 +112,11 @@ export function JobTitleTable({ data }: { data: JobTitleInsights }) {
     >
       {data.rows.map((row) => (
         <TableRow key={row.jobTitle}>
-          <TableCell>{row.jobTitle}</TableCell>
+          <TableCell>
+            <TableLink to={employeesUrl({ country, jobTitle: row.jobTitle })}>
+              {row.jobTitle}
+            </TableLink>
+          </TableCell>
           <TableCell align="right" sx={num}>
             {row.headcount.toLocaleString()}
           </TableCell>
