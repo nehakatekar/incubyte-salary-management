@@ -1,6 +1,6 @@
 # Trade-offs and Future Improvements
 
-What this version deliberately gives up, the limits we know about, and what we would do next, in priority order. The full reasoning behind each decision is in [`decisions.md`](decisions.md) (ADR-001 to ADR-009).
+What this version deliberately gives up, the limits we know about, and what we would do next, in priority order. The full reasoning behind each decision is in [`decisions.md`](decisions.md) (ADR-001 to ADR-010).
 
 ## Key trade-offs
 

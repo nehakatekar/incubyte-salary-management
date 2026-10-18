@@ -98,7 +98,7 @@ TURSO_DATABASE_URL="file:./prod-rehearsal.db" npm start   # migrate, seed if emp
 
 ## Testing
 
-**113 server tests** (~3 s) and **61 client tests**, all fast and deterministic: the seed uses a fixed random seed, date rules use an injected clock, and API tests run against a fresh temporary SQLite database for each test file.
+**130 server tests** (~3.5 s) and **61 client tests**, all fast and deterministic: the seed uses a fixed random seed, date rules use an injected clock, and API tests run against a fresh temporary SQLite database for each test file.
 
 - Business rules and pay statistics are checked against small datasets with **expected values worked out by hand**.
 - Core logic was written **test-first**, and the important tests were **mutation-checked**: each rule was broken on purpose to confirm a test fails.
@@ -109,7 +109,7 @@ TURSO_DATABASE_URL="file:./prod-rehearsal.db" npm start   # migrate, seed if emp
 | -------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
 | [Requirements](docs/requirements.md)                                             | Goal, scope, business rules, and what is deliberately left out and why |
 | [Architecture](docs/architecture.md)                                             | System design, data model, API and testing strategy                    |
-| [Decisions](docs/decisions.md)                                                   | Architecture decision records (ADR-001 to ADR-009)                     |
+| [Decisions](docs/decisions.md)                                                   | Architecture decision records (ADR-001 to ADR-010)                     |
 | [Trade-offs and future improvements](docs/trade-offs-and-future-improvements.md) | What this version gives up, known limitations, and what comes next     |
 | [Performance](docs/performance.md)                                               | Query timings on 10k rows, bundle size, and the scale-up path          |
 | [AI usage](docs/ai-usage.md)                                                     | How AI tools were used, what was corrected, and how output was checked |

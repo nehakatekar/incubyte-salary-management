@@ -111,3 +111,33 @@ This project was built with **Claude Code** (an agentic CLI) as a pair programme
   - A console 404 came from the missing favicon. I added an inline SVG icon, and a re-run reported no browser errors.
   - My first script failed because `Escape` closed an autocomplete popup, not the dialog. That was a script bug, fixed by closing dialogs via Cancel.
 - **Process correction:** CI **failed on commit `167bc7c`** (Phase 5) at `format:check`. When splitting the Phase 5/6 commits, I staged a hand-trimmed `docs/performance.md` and verified it with typecheck and tests only, not the full CI sequence. The next commit fixed it, and history was not rewritten. From now on, every commit is preceded by the exact CI steps: lint, format check, typecheck, test, build.
+
+### Code review round
+
+- **Prompt (summary):** "Re-check that the code and tests are production quality, and fix what isn't."
+- **Approach:** I read every server and client file, then **confirmed each suspected problem with a real request or a failing test before changing anything**. Each of the 11 fixes has a test that failed first, and each fix was mutation-checked.
+- **Found and fixed (server):**
+  - Searching `_` or `%` returned every employee: Prisma's SQLite `contains` passes them to `LIKE` as wildcards with no escape option, so such terms now use an escaped raw query.
+  - A salary change could land on someone terminated a moment earlier: the optimistic check now also requires the employee to be active.
+  - The hire date could be edited to after the first salary record.
+  - Oversized bodies returned 500 (now 413); the `X-Powered-By` header leaked the framework; shutdown could hang on keep-alive connections.
+- **Found and fixed (client):** 404s were retried, delaying "not found"; an unreachable server showed "Failed to fetch"; a malformed id in the URL called the API; a page past the end showed an empty table; the search box ignored URL changes made elsewhere.
+- **Flaky test:** one form test sometimes hit the 5 s timeout because it typed 60 characters one key at a time. A `fill()` helper and a test theme without animations brought it from ~4.2 s to ~2.7 s. Per-key typing is kept only where keystrokes are what's being tested.
+
+### Interactivity
+
+- **Prompt (summary):** "Make the UI more interactive."
+- **Decision:** I chose interactions that serve the HR manager's questions rather than decoration: every country, department and job title on the dashboard **links to the matching employees**, the employee page shows **salary over time**, and filters gained clear buttons.
+- **Corrected after looking at it:**
+  - The first chart **exaggerated a 7.6% raise into a cliff**, because the y-axis zoomed to the data. The axis now starts at ~85% of the lowest salary. The line also runs on to today, because the latest salary still applies.
+  - Adding the chart pulled the charting library into the main bundle (208 → 314 kB gzip), so it is lazy-loaded. The main bundle ended at ~179 kB, smaller than before.
+  - My first clear button for the country and department dropdowns let long values run underneath it. Instead of forcing it with CSS overrides, all three filters now share one control that handles the layout properly.
+
+### Phase 7 — Deployment
+
+- **Prompt (summary):** "Deploy for free, and keep the employee records persistent."
+- **Decision (ADR-010):** Render's free plan runs a Node server but has no persistent disk, so a SQLite file would be wiped on restart; static hosts such as Netlify run no server at all. I chose **Render (free) for the app and Turso (free, hosted SQLite) for the database**, both in Oregon. It's the same engine and SQL, so no queries changed.
+- **Outcome:** Express serves the built client (one URL). Prisma uses the libSQL adapter only when Turso is configured, so development and tests keep the local file. A migration runner works where `prisma migrate deploy` cannot. The seed runs only on an empty database, so restarts keep HR's changes. `render.yaml` sits in the repo root.
+- **Verified before deploying:** I rehearsed the exact production start locally through the Turso adapter: migrate, seed (10k in ~3 s), restart (seed skipped, data kept), every route, writes (201 / 409 / 422), and a real browser.
+- **Found only in production:** after deploying I measured every endpoint from India. Filter options took **~2.2 s**: Prisma's `findMany({ distinct })` fetches every row and de-duplicates in memory, which is invisible locally but moved 30,000 rows over the network. Switching to `groupBy` (checked in the logged SQL to be a real `GROUP BY`) brought it to **~25 ms**. Every endpoint now does its work in under 10–70 ms; the rest of each ~360 ms request is the round trip to Oregon.
+- **Corrected along the way:** a Windows file lock from the running dev server blocked Prisma's post-install step, so the adapter was installed without it (no client regeneration was needed). Temporary database files stay locked by the libSQL driver on Windows, so test cleanup is best-effort.
