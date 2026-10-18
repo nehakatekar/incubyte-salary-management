@@ -53,3 +53,16 @@ Short records of decisions that shaped the system: the context, what was decided
   - **Optimistic concurrency:** the update only matches if the salary is still what the service read. Otherwise the request fails with 409 and the user reloads.
 - **Not enforced in the API:** an upper bound on the size of a change. A manual test accepted £55,400 → £999,999, almost certainly a typo, but large legitimate changes exist. The UI will ask for confirmation when a change exceeds ±30% instead of blocking it.
 - **Consequences:** Every salary change is explained (it has a reason), ordered, and attributable to a date. All rules are unit-tested with a fake repository, and mutation-checked: removing any rule makes a test fail.
+
+## ADR-009: Pay insights: SQL aggregation, USD for comparison, local for detail
+
+- **Context:** The brief's second goal is to "answer questions about how the org pays people" across 8 countries and 7 currencies. Comparing raw salaries across currencies is meaningless (₹2.5M vs £61k), but converting everything to USD hides the local pay bands HR actually negotiates in.
+- **Decision:**
+  - **Two lenses.** Cross-country views (summary, by department, org-wide title bands and distribution) use **USD at the static rates** in `fx.ts` (deterministic and documented in `requirements.md`). Single-country views stay in the **local currency**. The by-country table shows local min/median/max plus median and total cost in USD side by side.
+  - **Active employees only.** Terminated staff no longer cost anything and would skew the bands.
+  - **Median alongside average everywhere.** The seeded distribution is right-skewed (senior pay pulls the mean up: $82.5k average vs $73.9k median), so the median is the honest "typical" figure.
+  - **All aggregation runs in SQLite** in one query per view. A `rates` CTE is built from `fx.ts`, `base` holds converted amounts (USD rounded to cents so 79,000 GBP is exactly $100,000), and medians use `ROW_NUMBER() OVER (PARTITION BY …)`, averaging the middle one or two rows. No endpoint loads individual salaries into Node.
+  - **Histogram buckets use "nice" widths** (1/2/2.5/5 × 10ⁿ, ~20 buckets), computed in a pure, unit-tested function, so bands read as $20K–$40K and not $17,834–$33,668.
+  - **Dashboard design follows a data-viz checklist:** form chosen before colour (KPI tiles for headline numbers, tables where currencies differ, bars for comparison). Every chart is a single series in one validated colour (no legend needed), with values at the bar tips, tooltips on hover, and a table view for the histogram so no value is hover-only. Drill-down state (`?country=`) lives in the URL, like the employee list.
+  - The insights route is **lazy-loaded**, so the charting library (~108 kB gzip) never slows the employee screens.
+- **Consequences:** Every number on the dashboard is covered by an API test against a hand-computed 7-person dataset, and the SQL was mutation-checked (median parity, active filter, FX conversion, ordering). Org-wide USD queries take ~80 ms on 10k rows. If that grows, cache the aggregates and invalidate on employee writes (see `performance.md`). Static FX rates are a known simplification: a production system would version rates by date.

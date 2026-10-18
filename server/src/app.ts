@@ -3,9 +3,12 @@ import express, { type Express } from 'express';
 import { systemClock, type Clock } from './domain/clock.js';
 import { errorHandler, notFoundHandler } from './http/error-handler.js';
 import { EmployeeRepository } from './repositories/employee.repository.js';
+import { InsightsRepository } from './repositories/insights.repository.js';
 import { employeesRouter } from './routes/employees.routes.js';
+import { insightsRouter } from './routes/insights.routes.js';
 import { metaRouter } from './routes/meta.routes.js';
 import { EmployeeService } from './services/employee.service.js';
+import { InsightsService } from './services/insights.service.js';
 import { SalaryService } from './services/salary.service.js';
 
 export interface AppDependencies {
@@ -21,6 +24,7 @@ export function createApp({ prisma, clock = systemClock }: AppDependencies): Exp
   const employeeRepository = new EmployeeRepository(prisma);
   const employeeService = new EmployeeService(employeeRepository);
   const salaryService = new SalaryService(employeeRepository, clock);
+  const insightsService = new InsightsService(new InsightsRepository(prisma));
 
   const app = express();
   app.use(express.json());
@@ -30,6 +34,7 @@ export function createApp({ prisma, clock = systemClock }: AppDependencies): Exp
   });
   app.use('/api/employees', employeesRouter(employeeService, salaryService));
   app.use('/api/meta', metaRouter(employeeRepository));
+  app.use('/api/insights', insightsRouter(insightsService));
 
   app.use('/api', notFoundHandler);
   app.use(errorHandler);

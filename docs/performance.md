@@ -36,3 +36,20 @@ All are well inside the < 100 ms API target in `requirements.md`. The first requ
 | Deep offset pages slow down | Keyset (cursor) pagination on `(sortKey, id)`                      |
 | `meta/filters` called often | Cache in memory and invalidate on employee writes                  |
 | Concurrent writers          | Move to Postgres: change the Prisma `provider` and run a migration |
+
+## Insights API
+
+Measured warm on the 10k data set (9,594 active employees).
+
+| Request                                   | Time   | Notes                                              |
+| ----------------------------------------- | ------ | -------------------------------------------------- |
+| `GET /api/insights/summary`               | ~80 ms | Converts and ranks every active row for the median |
+| `GET /api/insights/by-country`            | ~83 ms | Two grouped passes (local + USD)                   |
+| `GET /api/insights/by-department`         | ~79 ms | One grouped pass in USD                            |
+| `GET /api/insights/by-job-title`          | ~82 ms | Org-wide, USD                                      |
+| `GET /api/insights/by-job-title?country=` | ~26 ms | Narrowed by the `country` index                    |
+| `GET /api/insights/distribution`          | ~71 ms | Range query + bucket query                         |
+| `GET /api/insights/recent-changes`        | ~15 ms | `effectiveDate` index, limit 10                    |
+
+All within the < 100 ms target, but org-wide views are the heaviest queries in the system because each one scans and sorts all active salaries. **Next step if headcount grows:** cache each aggregate in memory, keyed by view and country, and invalidate on any employee or salary write. Writes are rare compared to reads, so the hit rate would be very high.
+

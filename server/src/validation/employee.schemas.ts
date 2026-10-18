@@ -5,7 +5,7 @@ import { isoDate } from './common.js';
 
 const text = z.string().trim().min(1).max(100);
 const email = z.string().trim().toLowerCase().pipe(z.email().max(254));
-const country = z.string().refine((value) => COUNTRIES.some((c) => c.name === value), {
+export const country = z.string().refine((value) => COUNTRIES.some((c) => c.name === value), {
   message: 'Unsupported country',
 });
 export const salary = z.number().int().positive().max(MAX_SALARY);

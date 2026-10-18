@@ -72,3 +72,17 @@ This project was built with **Claude Code** (an agentic CLI) as a pair programme
 - **How I checked the tests were meaningful:** I ran a quick **mutation check**. I disabled each rule in turn (future date, terminated, optimistic check, revision insert) and confirmed at least one test failed every time, then restored the code.
 - **Product gap found by manual testing:** the API accepted an 18× raise (£55,400 → £999,999). I decided not to block it server-side, because legitimate large changes exist, and planned a UI confirmation for changes over ±30% instead (ADR-007).
 - **Verification:** 83 server tests pass in ~2.8 s. Lint, typecheck and format are clean. A manual change against the 10k DB returned 201 in ~55 ms. The data was re-seeded afterwards.
+
+### Phase 5 — Pay insights
+
+- **Prompt (summary):** "Build insights answering 'how does the org pay people': summary, by country, by department, by job title (optionally per country), salary distribution and recent changes. Do all aggregation in SQL, write tests first against a hand-computed dataset, then build the dashboard following the data-viz skill."
+- **Outcome:** `InsightsRepository` (one SQL query per view: a rates CTE, converted amounts, window-function medians), `InsightsService` (merging, rounding, sorting, histogram), six endpoints, and a dashboard with KPI tiles, a department cost chart, country and job-title tables with range bars, a histogram with a table view, and recent changes.
+- **How the numbers were verified:**
+  - The API tests use a **7-person dataset where every expected value was worked out by hand**, with the arithmetic written in comments. They were seen failing first, and matched exactly once implemented.
+  - The **SQL was mutation-checked**: breaking the even-count median, dropping the active-only filter, skipping FX conversion, or ranking unsorted values each failed 4–6 tests.
+  - Histogram bucket widths and FX conversion have their own unit tests.
+- **Rendered and reviewed, then corrected:** the first screenshot of the dashboard showed three problems that no test would catch: a cramped country table (names wrapping onto three lines), awkward axis ticks ($95M, $190M…), and stretched half-empty cards. I fixed the layout: the country table went full width, the redundant axis was removed because every bar is labelled, cards size to their content, and recent changes were compacted to four columns. I re-screenshotted to confirm.
+- **Corrected along the way:**
+  - Recharts pushed the bundle past 1 MB. I lazy-loaded the insights route, so employee screens stay at ~208 kB gzip.
+  - jsdom has no `ResizeObserver`, which Recharts needs, so I added a minimal stub in the test setup.
+- **Verification:** 107 server and 23 client tests pass. Lint, typecheck and build are clean. Endpoints were timed on 10k rows (15–85 ms).
