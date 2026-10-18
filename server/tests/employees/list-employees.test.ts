@@ -91,6 +91,14 @@ describe('GET /api/employees', () => {
       expect(names(await list({ search: first!.employeeCode }))).toEqual(['Anna Schmidt']);
     });
 
+    it('treats % and _ as literal characters, not wildcards', async () => {
+      await insertEmployee(db.prisma, { fullName: 'Bob_Ray', email: 'bob@acme.com' });
+
+      expect(names(await list({ search: '_' }))).toEqual(['Bob_Ray']);
+      expect(names(await list({ search: 'b_r' }))).toEqual(['Bob_Ray']);
+      expect(names(await list({ search: '%' }))).toEqual([]);
+    });
+
     it('ignores surrounding whitespace and treats a blank search as no search', async () => {
       expect(names(await list({ search: '  smith ' }))).toEqual(['John Smith']);
       expect(names(await list({ search: '   ' }))).toHaveLength(3);

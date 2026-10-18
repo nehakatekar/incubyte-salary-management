@@ -146,6 +146,24 @@ describe('PATCH /api/employees/:id', () => {
     },
   );
 
+  it('allows correcting the hire date to an earlier day', async () => {
+    const employee = await insertEmployee(db.prisma, { hireDate: '2020-01-15' });
+
+    const res = await api.patch(`/api/employees/${employee.id}`).send({ hireDate: '2019-12-01' });
+
+    expect(res.status).toBe(200);
+    expect(res.body.hireDate).toBe('2019-12-01');
+  });
+
+  it('refuses a hire date after the first salary record', async () => {
+    const employee = await insertEmployee(db.prisma, { hireDate: '2020-01-15' });
+
+    const res = await api.patch(`/api/employees/${employee.id}`).send({ hireDate: '2021-03-01' });
+
+    expect(res.status).toBe(422);
+    expect(res.body.error.message).toMatch(/15 Jan 2020|2020-01-15/);
+  });
+
   it('rejects an empty update', async () => {
     const employee = await insertEmployee(db.prisma);
 
@@ -223,5 +241,21 @@ describe('error handling', () => {
 
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe('INVALID_JSON');
+  });
+
+  it('rejects an oversized body with 413 instead of a server error', async () => {
+    const res = await api
+      .post('/api/employees')
+      .set('Content-Type', 'application/json')
+      .send(JSON.stringify({ fullName: 'x'.repeat(200_000) }));
+
+    expect(res.status).toBe(413);
+    expect(res.body.error.code).toBe('PAYLOAD_TOO_LARGE');
+  });
+
+  it('does not advertise the server framework', async () => {
+    const res = await api.get('/api/health');
+
+    expect(res.headers['x-powered-by']).toBeUndefined();
   });
 });

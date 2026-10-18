@@ -4,6 +4,8 @@ import { formatEmployeeCode } from '../domain/employee.js';
 import { ConflictError, NotFoundError } from '../errors.js';
 import type { ListEmployeesQuery } from '../validation/employee.schemas.js';
 
+const LIKE_WILDCARDS = /[%_]/;
+
 export type EmployeeWithRevisions = Employee & { revisions: SalaryRevision[] };
 
 export type NewEmployee = Omit<
@@ -31,7 +33,7 @@ export class EmployeeRepository {
   constructor(private readonly prisma: PrismaClient) {}
 
   async list(query: ListEmployeesQuery): Promise<{ rows: Employee[]; total: number }> {
-    const where = buildWhere(query);
+    const where = await this.buildWhere(query);
     const [rows, total] = await this.prisma.$transaction([
       this.prisma.employee.findMany({
         where,
@@ -75,7 +77,8 @@ export class EmployeeRepository {
   /**
    * Applies a salary change and appends its revision atomically. The update
    * only matches if the salary is still what the caller read (optimistic
-   * concurrency), so two HR users cannot silently overwrite each other.
+   * concurrency) and the employee is still active, so two HR users cannot
+   * silently overwrite each other or pay someone just terminated.
    */
   async recordSalaryChange(
     id: number,
@@ -84,11 +87,11 @@ export class EmployeeRepository {
   ): Promise<void> {
     await this.prisma.$transaction(async (tx) => {
       const { count } = await tx.employee.updateMany({
-        where: { id, ...expected },
+        where: { id, status: 'ACTIVE', ...expected },
         data: { salary: revision.newSalary, salaryEffectiveDate: revision.effectiveDate },
       });
       if (count === 0) {
-        throw new ConflictError('Salary was changed by someone else; reload and try again');
+        throw new ConflictError('Employee was changed by someone else; reload and try again');
       }
       await tx.salaryRevision.create({ data: { ...revision, employeeId: id } });
     });
@@ -98,6 +101,43 @@ export class EmployeeRepository {
     return withConstraintErrors(() =>
       this.prisma.employee.update({ where: { id }, data: changes }),
     );
+  }
+
+  private async buildWhere({
+    search,
+    country,
+    department,
+    jobTitle,
+    status,
+  }: ListEmployeesQuery): Promise<Prisma.EmployeeWhereInput> {
+    const filters = { country, department, jobTitle, status };
+    if (!search) return filters;
+    if (!LIKE_WILDCARDS.test(search)) {
+      return {
+        ...filters,
+        OR: [
+          { fullName: { contains: search } },
+          { email: { contains: search } },
+          { employeeCode: { contains: search } },
+        ],
+      };
+    }
+    return { ...filters, id: { in: await this.idsContainingLiterally(search) } };
+  }
+
+  /**
+   * Prisma's `contains` passes % and _ straight to LIKE as wildcards and has no
+   * escape option, so terms containing them are matched here with ESCAPE.
+   * Only such (rare) terms take this path, which keeps the id list small.
+   */
+  private async idsContainingLiterally(search: string): Promise<number[]> {
+    const pattern = `%${search.replace(/[!%_]/g, (char) => `!${char}`)}%`;
+    const rows = await this.prisma.$queryRaw<{ id: number }[]>`
+      SELECT id FROM Employee
+      WHERE fullName LIKE ${pattern} ESCAPE '!'
+         OR email LIKE ${pattern} ESCAPE '!'
+         OR employeeCode LIKE ${pattern} ESCAPE '!'`;
+    return rows.map((row) => Number(row.id));
   }
 
   async filterValues(): Promise<FilterValues> {
@@ -123,28 +163,6 @@ export class EmployeeRepository {
     ]);
     return { countries, departments, jobTitles };
   }
-}
-
-function buildWhere({
-  search,
-  country,
-  department,
-  jobTitle,
-  status,
-}: ListEmployeesQuery): Prisma.EmployeeWhereInput {
-  return {
-    country,
-    department,
-    jobTitle,
-    status,
-    ...(search && {
-      OR: [
-        { fullName: { contains: search } },
-        { email: { contains: search } },
-        { employeeCode: { contains: search } },
-      ],
-    }),
-  };
 }
 
 /** Translates Prisma constraint failures into errors the API can report. */

@@ -1,6 +1,7 @@
 import type { Employee } from '@prisma/client';
+import { formatIsoDate } from '../domain/clock.js';
 import { currencyForCountry } from '../domain/countries.js';
-import { NotFoundError } from '../errors.js';
+import { BusinessRuleError, NotFoundError } from '../errors.js';
 import type {
   EmployeeRepository,
   EmployeeWithRevisions,
@@ -54,7 +55,17 @@ export class EmployeeService {
     );
   }
 
-  update(id: number, changes: UpdateEmployeeInput): Promise<Employee> {
+  async update(id: number, changes: UpdateEmployeeInput): Promise<Employee> {
+    if (changes.hireDate) {
+      // Nobody is paid before they are hired, so history must not start before the hire date.
+      const { revisions } = await this.get(id);
+      const firstPaid = revisions.at(-1)?.effectiveDate;
+      if (firstPaid && changes.hireDate > firstPaid) {
+        throw new BusinessRuleError(
+          `Hire date cannot be after the first salary record on ${formatIsoDate(firstPaid)}`,
+        );
+      }
+    }
     return this.employees.update(id, changes);
   }
 

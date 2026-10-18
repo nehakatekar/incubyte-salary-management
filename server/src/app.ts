@@ -27,6 +27,7 @@ export function createApp({ prisma, clock = systemClock }: AppDependencies): Exp
   const insightsService = new InsightsService(new InsightsRepository(prisma));
 
   const app = express();
+  app.disable('x-powered-by');
   app.use(express.json());
 
   app.get('/api/health', (_req, res) => {

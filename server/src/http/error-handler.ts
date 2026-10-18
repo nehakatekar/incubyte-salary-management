@@ -33,7 +33,13 @@ export const errorHandler: ErrorRequestHandler = (error, _req, res, _next) => {
     return;
   }
 
-  // Raised by express.json() for unparseable bodies.
+  // Raised by express.json().
+  if (error?.type === 'entity.too.large') {
+    res
+      .status(413)
+      .json({ error: { code: 'PAYLOAD_TOO_LARGE', message: 'Request body is too large' } });
+    return;
+  }
   if (error?.type === 'entity.parse.failed') {
     res
       .status(400)

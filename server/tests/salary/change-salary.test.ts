@@ -117,4 +117,27 @@ describe('EmployeeRepository.recordSalaryChange', () => {
     await expect(result).rejects.toThrow(ConflictError);
     expect(await db.prisma.salaryRevision.count()).toBe(1);
   });
+
+  it('refuses to change the salary of someone terminated since it was read', async () => {
+    const employee = await insertEmployee(db.prisma, { salary: 100_000 });
+    const repository = new EmployeeRepository(db.prisma);
+    await repository.update(employee.id, { status: 'TERMINATED' });
+
+    const result = repository.recordSalaryChange(
+      employee.id,
+      { salary: 100_000, salaryEffectiveDate: employee.salaryEffectiveDate },
+      {
+        previousSalary: 100_000,
+        newSalary: 120_000,
+        currency: 'USD',
+        effectiveDate: new Date('2026-10-01'),
+        reason: 'Raise',
+      },
+    );
+
+    await expect(result).rejects.toThrow(ConflictError);
+    expect((await db.prisma.employee.findUnique({ where: { id: employee.id } }))?.salary).toBe(
+      100_000,
+    );
+  });
 });
