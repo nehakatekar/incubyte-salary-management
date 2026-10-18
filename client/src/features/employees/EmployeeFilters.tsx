@@ -126,9 +126,7 @@ export function EmployeeFilters({
         label="Status"
         size="small"
         value={statusFilter}
-        onChange={(event) =>
-          update({ status: event.target.value === 'ACTIVE' ? undefined : event.target.value })
-        }
+        onChange={(event) => update({ status: event.target.value })}
         sx={{ minWidth: 140 }}
       >
         <MenuItem value="ACTIVE">Active</MenuItem>

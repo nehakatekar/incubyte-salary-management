@@ -30,7 +30,7 @@ type Patch = Partial<
 export function useListParams() {
   const [searchParams, setSearchParams] = useSearchParams();
 
-  const statusFilter = parseStatus(searchParams.get('status'));
+  const statusFilter = parseStatus(searchParams.get('status'), Boolean(searchParams.get('search')));
   const params = useMemo<ListEmployeesParams>(() => {
     const pageSize = Number(searchParams.get('pageSize'));
     const sortBy = searchParams.get('sortBy') as SortField;
@@ -81,13 +81,18 @@ export function useListParams() {
     params.country ||
     params.department ||
     params.jobTitle ||
-    statusFilter !== 'ACTIVE',
+    searchParams.has('status'),
   );
 
   return { params, statusFilter, update, clearFilters, hasFilters };
 }
 
-/** HR mostly works with current staff, so the list defaults to active employees. */
-function parseStatus(value: string | null): StatusFilter {
-  return value === 'TERMINATED' || value === 'ALL' ? value : 'ACTIVE';
+/**
+ * HR mostly works with current staff, so browsing defaults to active employees.
+ * A search is looking for someone specific, so it also finds terminated staff
+ * unless the user has picked a status.
+ */
+function parseStatus(value: string | null, searching: boolean): StatusFilter {
+  if (value === 'ACTIVE' || value === 'TERMINATED' || value === 'ALL') return value;
+  return searching ? 'ALL' : 'ACTIVE';
 }

@@ -76,6 +76,31 @@ describe('EmployeeListPage', () => {
     expect(searches[0]?.query.get('page')).toBe('1');
   });
 
+  it('includes terminated employees in a search unless a status is picked', async () => {
+    const api = mockApi(
+      on('GET', '/employees', pageOf([ada])),
+      on('GET', '/meta/filters', filterValues),
+    );
+    renderWithProviders(<EmployeeListPage />);
+    await screen.findByText('Ada Lovelace');
+
+    await userEvent.type(screen.getByLabelText('Search'), 'lovelace');
+
+    await waitFor(() =>
+      expect(api.callsTo('/employees').at(-1)?.query.get('search')).toBe('lovelace'),
+    );
+    expect(api.callsTo('/employees').at(-1)?.query.has('status')).toBe(false);
+    expect(screen.getByLabelText('Status')).toHaveTextContent('All');
+
+    await userEvent.click(screen.getByLabelText('Status'));
+    await userEvent.click(screen.getByRole('option', { name: 'Active' }));
+
+    await waitFor(() =>
+      expect(api.callsTo('/employees').at(-1)?.query.get('status')).toBe('ACTIVE'),
+    );
+    expect(api.callsTo('/employees').at(-1)?.query.get('search')).toBe('lovelace');
+  });
+
   describe('clearing the search', () => {
     const searchFor = async (text: string) => {
       const api = mockApi(
