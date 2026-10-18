@@ -32,7 +32,7 @@ Short records of decisions that shaped the system: the context, what was decided
 - **Decision:**
   - All filtering, searching, sorting and paging happens **in the database**. The client never downloads the full list.
   - **Offset pagination** (`page`, `pageSize` ≤ 100) with a secondary sort on `id`, so pages stay stable when sort values tie. It returns `total` and `totalPages` so the UI can jump to any page.
-  - **Search** is a case-insensitive substring match (`LIKE %term%`) on name, email and employee code. Filters (country, department, job title, status) are exact matches combined with AND.
+  - **Search** is a case-insensitive substring match (`LIKE %term%`) on name, email and employee code. `%` and `_` in a search term are matched literally: Prisma's SQLite `contains` passes them through as wildcards with no escape option, so such terms use a raw query with `ESCAPE`. Filters (country, department, job title, status) are exact matches combined with AND.
   - `sortBy` is a **whitelist**, so clients cannot sort on arbitrary or unindexed columns.
 - **Consequences:** Measured on 10k rows: list and filter queries take 9–25 ms and a warm search ~22 ms. A leading-wildcard `LIKE` cannot use an index, which is fine here but grows linearly. The upgrade paths are FTS5 for search and keyset pagination for very deep pages. SQLite's `LIKE` only ignores case for ASCII, so "Ö" will not match "ö". This is acceptable for v1 and FTS5 fixes it.
 
@@ -50,7 +50,7 @@ Short records of decisions that shaped the system: the context, what was decided
   - The new salary must **differ** from the current one. Decreases are allowed, for example a move to part-time.
   - The effective date must be **on or after** the current salary's effective date, so history stays in order. A same-day correction is allowed.
   - The effective date **cannot be in the future**. Scheduled changes would need a pending state and a job to apply them, which is out of scope for v1. "Today" comes from an injected clock, so tests are deterministic.
-  - **Optimistic concurrency:** the update only matches if the salary is still what the service read. Otherwise the request fails with 409 and the user reloads.
+  - **Optimistic concurrency:** the update only matches if the salary is still what the service read **and the employee is still active**. Otherwise the request fails with 409 and the user reloads, so a raise cannot land on someone terminated a moment earlier.
 - **Not enforced in the API:** an upper bound on the size of a change. A manual test accepted £55,400 → £999,999, almost certainly a typo, but large legitimate changes exist. The UI will ask for confirmation when a change exceeds ±30% instead of blocking it.
 - **Consequences:** Every salary change is explained (it has a reason), ordered, and attributable to a date. All rules are unit-tested with a fake repository, and mutation-checked: removing any rule makes a test fail.
 
@@ -68,7 +68,7 @@ Short records of decisions that shaped the system: the context, what was decided
   - **Sorting by salary without a country filter shows a hint** that salaries are in local currencies, so the HR manager does not compare ₹ and £ by mistake.
   - Forms use plain React state. They are small enough that a form library would add more weight than it removes.
   - Client DTO types are hand-written to mirror `server/src/http/dto.ts`. A shared types package or OpenAPI generation is the next step if the API grows.
-- **Consequences:** The bundle is ~666 kB (~208 kB gzip) as a single chunk, which is acceptable for an internal tool. Route-level code splitting is the easy next step if load time matters.
+- **Consequences:** The main bundle is ~580 kB (~179 kB gzip). The charting library is split out and lazy-loaded: the Insights page and the employee salary chart fetch it on first use, so the employee list never pays for it.
 
 ## ADR-009: Pay insights: SQL aggregation, USD for comparison, local for detail
 

@@ -16,6 +16,7 @@ Measured locally (Windows 11, Node 22, SQLite) against the seeded data set of **
 | `?page=200&pageSize=50` (deep page)                                 | ~25 ms | Offset skips 9,950 rows                       |
 | `?country=India&department=Engineering&status=ACTIVE&sortBy=salary` | ~13 ms | `Employee_country_department_idx` + temp sort |
 | `?search=sharma` (substring on name/email/code)                     | ~22 ms | Full scan (leading wildcard)                  |
+| `?search=_` (literal `%` / `_`, escaped match)                      | ~10 ms | Raw `LIKE … ESCAPE` for ids, then the list    |
 | `GET /api/employees/:id` (with revisions)                           | ~27 ms | Primary key + `employeeId` index              |
 | `GET /api/meta/filters`                                             | ~50 ms | 3 × `DISTINCT` on indexed columns             |
 
@@ -44,7 +45,7 @@ All are well inside the < 100 ms API target in `requirements.md`. The first requ
 | Request volume    | Search debounced at 300 ms; filter options cached for 5 min; list cached for 30 s |
 | Perceived latency | `keepPreviousData` keeps the current page on screen while the next page loads     |
 | Payload           | At most 100 rows per page; salary history only loaded on the detail page          |
-| Bundle            | ~666 kB / ~208 kB gzip, single chunk. Next step: lazy-load routes (`React.lazy`)  |
+| Bundle            | Main ~580 kB / ~179 kB gzip; charts lazy-loaded on first use (`React.lazy`)       |
 
 ## Insights API
 
@@ -62,4 +63,4 @@ Measured warm on the 10k data set (9,594 active employees).
 
 All within the < 100 ms target, but org-wide views are the heaviest queries in the system because each one scans and sorts all active salaries. **Next step if headcount grows:** cache each aggregate in memory, keyed by view and country, and invalidate on any employee or salary write. Writes are rare compared to reads, so the hit rate would be very high.
 
-Client: the insights page is code-split. The main bundle stays at ~208 kB gzip, and the charts chunk (~108 kB gzip) loads on first visit to Insights.
+Client: the insights page and the employee salary chart are code-split. The main bundle is ~179 kB gzip, and the charting library (~100 kB gzip) loads only when a chart is first shown.
