@@ -22,7 +22,8 @@
     "format:check": "prettier --check .",
     "seed": "npm run db:seed --workspace server",
     "db:migrate": "npm run db:deploy --workspace server",
-    "db:studio": "npm run db:studio --workspace server"
+    "db:studio": "npm run db:studio --workspace server",
+    "start": "npm run start --workspace server"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

@@ -1,12 +1,20 @@
-import { PrismaClient } from '@prisma/client';
+import { existsSync } from 'node:fs';
+import { join } from 'node:path';
 import { createApp } from './app.js';
+import { createPrismaClient } from './db/client.js';
 
 const port = Number(process.env.PORT ?? 3000);
 const SHUTDOWN_TIMEOUT_MS = 10_000;
-const prisma = new PrismaClient();
+// The built React app, served by the API in production (one deployable, one URL).
+const CLIENT_DIR = join(import.meta.dirname, '../../client/dist');
 
-const server = createApp({ prisma }).listen(port, () => {
-  console.log(`Server listening on http://localhost:${port}`);
+const prisma = createPrismaClient();
+const clientDir = existsSync(join(CLIENT_DIR, 'index.html')) ? CLIENT_DIR : undefined;
+
+const server = createApp({ prisma, clientDir }).listen(port, () => {
+  console.log(
+    `Server listening on http://localhost:${port}${clientDir ? ' (serving the client build)' : ''}`,
+  );
 });
 
 server.on('error', (error) => {

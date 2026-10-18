@@ -1,51 +1,31 @@
-import { PrismaClient } from '@prisma/client';
-import { generateEmployees } from './generate-employees.js';
+import { createPrismaClient } from '../db/client.js';
+import { seedDatabase } from './seed-database.js';
 
-const EMPLOYEE_COUNT = Number(process.env.SEED_COUNT ?? 10_000);
-const SEED = 20_261_017;
-const REFERENCE_DATE = new Date('2026-06-30T00:00:00Z');
-const CHUNK_SIZE = 500;
-
+/**
+ * `npm run seed` replaces the data with the deterministic 10k data set.
+ * `--if-empty` (used on deploy) only seeds a brand-new database.
+ */
 async function main() {
-  const prisma = new PrismaClient();
+  const prisma = createPrismaClient();
   const started = Date.now();
-
-  const employees = generateEmployees({
-    count: EMPLOYEE_COUNT,
-    seed: SEED,
-    referenceDate: REFERENCE_DATE,
-  });
-  // Explicit ids let revisions reference their employee without a read-back.
-  const rows = employees.map(({ revisions: _revisions, ...employee }, i) => ({
-    id: i + 1,
-    ...employee,
-  }));
-  const revisions = employees.flatMap((e, i) =>
-    e.revisions.map((r) => ({ ...r, employeeId: i + 1, currency: e.currency })),
-  );
-
-  await prisma.$transaction(
-    async (tx) => {
-      await tx.salaryRevision.deleteMany();
-      await tx.employee.deleteMany();
-      for (const chunk of chunks(rows, CHUNK_SIZE)) await tx.employee.createMany({ data: chunk });
-      for (const chunk of chunks(revisions, CHUNK_SIZE))
-        await tx.salaryRevision.createMany({ data: chunk });
-    },
-    { timeout: 120_000 },
-  );
-
-  console.log(
-    `Seeded ${rows.length} employees and ${revisions.length} salary revisions in ${Date.now() - started} ms`,
-  );
-  await prisma.$disconnect();
-}
-
-function* chunks<T>(items: T[], size: number): Generator<T[]> {
-  for (let i = 0; i < items.length; i += size) yield items.slice(i, i + size);
+  try {
+    const result = await seedDatabase(prisma, {
+      count: Number(process.env.SEED_COUNT ?? 10_000),
+      seed: 20_261_017,
+      referenceDate: new Date('2026-06-30T00:00:00Z'),
+      onlyIfEmpty: process.argv.includes('--if-empty'),
+    });
+    console.log(
+      result.skipped
+        ? 'Database already has employees; seed skipped'
+        : `Seeded ${result.employees} employees and ${result.revisions} salary revisions in ${Date.now() - started} ms`,
+    );
+  } finally {
+    await prisma.$disconnect();
+  }
 }
 
 main().catch((error: unknown) => {
-  console.error(error);
+  console.error('Seed failed', error);
   process.exit(1);
 });

@@ -78,6 +78,22 @@ client/src/
 docs/            requirements, architecture, decisions and more (below)
 ```
 
+## Deployment
+
+The app runs as **one web service** on [Render](https://render.com) (free plan): Express serves both the API and the built React app on a single URL. The database is [Turso](https://turso.tech), hosted SQLite, because free Render services have no persistent disk. Both run in the same region (Oregon). The reasoning is in [ADR-010](docs/decisions.md).
+
+- **Blueprint:** [`render.yaml`](render.yaml) in the repository root defines the service: build command, start command, health check (`/api/health`) and environment variables.
+- **On every start:** pending migrations are applied, the 10,000-employee seed runs **only if the database is empty** (so restarts keep HR's changes), and then the server starts.
+- **Secrets:** `TURSO_DATABASE_URL` and `TURSO_AUTH_TOKEN` are entered in the Render dashboard and never committed. Without them the app uses the local SQLite file, which is how development and tests run.
+- **Free-plan note:** the service sleeps after 15 minutes without traffic, so the first visit after a quiet period takes about a minute to wake it.
+
+To rehearse production locally:
+
+```bash
+npm run build
+TURSO_DATABASE_URL="file:./prod-rehearsal.db" npm start   # migrate, seed if empty, serve on :3000
+```
+
 ## Testing
 
 **113 server tests** (~3 s) and **61 client tests**, all fast and deterministic: the seed uses a fixed random seed, date rules use an injected clock, and API tests run against a fresh temporary SQLite database for each test file.

@@ -34,6 +34,7 @@ Services receive repositories (and a clock) through constructor injection. Unit 
     services/           business rules (employees, salary changes)
     routes/             Express routers: parse -> call service -> map to DTO
     http/               DTO mapping, central error handler
+    db/                 Prisma client factory (local file or Turso), migration runner
     seed/               deterministic generator + seed script
     errors.ts           AppError hierarchy (404 / 409 / 422)
     app.ts              createApp({ prisma, clock }): no listen, easy to test

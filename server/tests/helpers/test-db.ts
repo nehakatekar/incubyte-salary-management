@@ -1,19 +1,12 @@
 import { randomUUID } from 'node:crypto';
-import { readdirSync, readFileSync, rmSync } from 'node:fs';
+import { rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { PrismaClient } from '@prisma/client';
-
-const MIGRATIONS_DIR = join(import.meta.dirname, '../../prisma/migrations');
+import { readMigrations } from '../../src/db/migrations.js';
 
 /** Every migration statement, in order, read once per test run. */
-const MIGRATION_STATEMENTS = readdirSync(MIGRATIONS_DIR, { withFileTypes: true })
-  .filter((entry) => entry.isDirectory())
-  .map((entry) => entry.name)
-  .sort()
-  .flatMap((dir) => readFileSync(join(MIGRATIONS_DIR, dir, 'migration.sql'), 'utf8').split(';'))
-  .map((sql) => sql.replace(/^\s*--.*$/gm, '').trim())
-  .filter(Boolean);
+const MIGRATION_STATEMENTS = readMigrations().flatMap((migration) => migration.statements);
 
 export interface TestDb {
   prisma: PrismaClient;

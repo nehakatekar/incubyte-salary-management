@@ -1,0 +1,26 @@
+# Render Blueprint: one web service that serves both the API and the React app.
+# The database is Turso (hosted SQLite), because free Render services have no
+# persistent disk. See docs/decisions.md, ADR-010.
+services:
+  - type: web
+    name: acme-salary-management
+    runtime: node
+    plan: free
+    # Same region as the Turso database, so queries stay fast.
+    region: oregon
+    buildCommand: npm ci && npm run build
+    # Applies migrations, seeds only a brand-new database, then starts the server.
+    startCommand: npm start
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: '22'
+      # Required by the Prisma schema; unused when the Turso settings are present.
+      - key: DATABASE_URL
+        value: file:./unused.db
+      # Secrets: entered in the Render dashboard, never committed.
+      - key: TURSO_DATABASE_URL
+        sync: false
+      - key: TURSO_AUTH_TOKEN
+        sync: false

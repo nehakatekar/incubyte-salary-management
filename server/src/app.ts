@@ -1,3 +1,4 @@
+import { join } from 'node:path';
 import type { PrismaClient } from '@prisma/client';
 import express, { type Express } from 'express';
 import { systemClock, type Clock } from './domain/clock.js';
@@ -14,13 +15,15 @@ import { SalaryService } from './services/salary.service.js';
 export interface AppDependencies {
   prisma: PrismaClient;
   clock?: Clock;
+  /** Folder of the built React app; when given, the API also serves the client. */
+  clientDir?: string;
 }
 
 /**
  * Builds the Express app without binding a port, so tests can drive it
  * in-process with Supertest against their own database and clock.
  */
-export function createApp({ prisma, clock = systemClock }: AppDependencies): Express {
+export function createApp({ prisma, clock = systemClock, clientDir }: AppDependencies): Express {
   const employeeRepository = new EmployeeRepository(prisma);
   const employeeService = new EmployeeService(employeeRepository);
   const salaryService = new SalaryService(employeeRepository, clock);
@@ -38,7 +41,26 @@ export function createApp({ prisma, clock = systemClock }: AppDependencies): Exp
   app.use('/api/insights', insightsRouter(insightsService));
 
   app.use('/api', notFoundHandler);
+  if (clientDir) serveClient(app, clientDir);
   app.use(errorHandler);
 
   return app;
+}
+
+/**
+ * One deployable: the API also serves the built client. Hashed assets are cached
+ * for a year; every other GET returns index.html so client-side routes such as
+ * /employees/42 survive a refresh, and the page itself is always revalidated.
+ */
+function serveClient(app: Express, clientDir: string) {
+  app.use('/assets', express.static(join(clientDir, 'assets'), { immutable: true, maxAge: '1y' }));
+  // A missing asset is a real 404, not a reason to serve the app page.
+  app.use('/assets', (_req, res) => {
+    res.status(404).end();
+  });
+  app.use(express.static(clientDir, { index: false }));
+  app.get(/.*/, (_req, res) => {
+    res.setHeader('Cache-Control', 'no-cache');
+    res.sendFile(join(clientDir, 'index.html'));
+  });
 }
